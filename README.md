@@ -61,4 +61,5 @@
 
 ## 使用方式
 
-直接在浏览器中打开 `index.html`，无需安装或构建。所有处理均在本地完成，图片不会上传至任何服务器。
+- **在线使用**：[wangx61.github.io/share-a4-circle-sticker-studio](https://wangx61.github.io/share-a4-circle-sticker-studio)
+- **本地使用**：直接在浏览器中打开 `index.html`，无需安装或构建。所有处理均在本地完成，图片不会上传至任何服务器。
