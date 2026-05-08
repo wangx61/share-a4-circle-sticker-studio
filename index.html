@@ -105,6 +105,43 @@
                 <div class="section">
                     <span class="section-title">选择页面样式</span>
                     <div id="layout-options" class="layout-options"></div>
+                    <div id="custom-layout-panel" class="custom-layout-panel hidden">
+                        <div class="custom-layout-section">
+                            <span class="custom-section-title">页面尺寸 (mm)</span>
+                            <div class="custom-layout-row">
+                                <label class="custom-label">宽 <input type="number" id="custom-page-width" value="210" min="50" max="1000" step="1"></label>
+                                <label class="custom-label">高 <input type="number" id="custom-page-height" value="297" min="50" max="1000" step="1"></label>
+                            </div>
+                        </div>
+                        <div class="custom-layout-section">
+                            <span class="custom-section-title">边距 (mm)</span>
+                            <div class="custom-layout-row">
+                                <label class="custom-label">上 <input type="number" id="custom-margin-top" value="5" min="0" max="100" step="0.5"></label>
+                                <label class="custom-label">下 <input type="number" id="custom-margin-bottom" value="5" min="0" max="100" step="0.5"></label>
+                            </div>
+                            <div class="custom-layout-row">
+                                <label class="custom-label">左 <input type="number" id="custom-margin-left" value="4" min="0" max="100" step="0.5"></label>
+                                <label class="custom-label">右 <input type="number" id="custom-margin-right" value="4" min="0" max="100" step="0.5"></label>
+                            </div>
+                        </div>
+                        <div class="custom-layout-section">
+                            <span class="custom-section-title">圆点间距 (mm)</span>
+                            <div class="custom-layout-row">
+                                <label class="custom-label">横向 <input type="number" id="custom-gap-h" value="2" min="0" max="50" step="0.5"></label>
+                                <label class="custom-label">纵向 <input type="number" id="custom-gap-v" value="2" min="0" max="50" step="0.5"></label>
+                            </div>
+                        </div>
+                        <div class="custom-layout-section">
+                            <span class="custom-section-title">圆点数量</span>
+                            <div class="custom-layout-row">
+                                <label class="custom-label">列数 <input type="number" id="custom-cols" value="10" min="1" max="100" step="1"></label>
+                                <label class="custom-label">行数 <input type="number" id="custom-rows" value="10" min="1" max="100" step="1"></label>
+                            </div>
+                        </div>
+                        <div class="custom-layout-result">
+                            计算圆点直径: <span id="custom-diameter">--</span> mm
+                        </div>
+                    </div>
                     <div class="layout-warning">
                         注意：切换页面样式不会删除已有内容，但超出新网格范围的内容将暂时不可见，切回原样式后可恢复。
                     </div>

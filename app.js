@@ -51,6 +51,33 @@ const LAYOUTS = {
     }
 };
 
+// === CUSTOM LAYOUT ===
+function computeCustomLayout(config) {
+    const availW = config.pageWidth - config.marginLeft - config.marginRight;
+    const availH = config.pageHeight - config.marginTop - config.marginBottom;
+    const diamFromW = config.cols > 0 ? (availW - (config.cols - 1) * config.gapH) / config.cols : 0;
+    const diamFromH = config.rows > 0 ? (availH - (config.rows - 1) * config.gapV) / config.rows : 0;
+    const diameter = Math.max(1, Math.min(diamFromW, diamFromH));
+    return {
+        id: 'custom',
+        label: '样式四 (自定义)',
+        cols: config.cols,
+        rows: config.rows,
+        diameter: diameter,
+        bgDiameter: diameter + 1,
+        gapH: config.gapH,
+        gapV: config.gapV,
+        marginLeft: config.marginLeft,
+        marginTop: config.marginTop,
+        pageWidth: config.pageWidth,
+        pageHeight: config.pageHeight,
+        description: `${config.rows}行 × ${config.cols}列，直径${diameter.toFixed(1)}mm`
+    };
+}
+
+function getPageWidth() { return state.currentLayout.pageWidth || A4_WIDTH_MM; }
+function getPageHeight() { return state.currentLayout.pageHeight || A4_HEIGHT_MM; }
+
 // === FILL MODES ===
 const FillMode = { Single: 'Single', Row: 'Row', Column: 'Column', Page: 'Page' };
 const BoxSelectMode = { Off: 'Off', Fill: 'Fill', Delete: 'Delete' };
@@ -75,7 +102,21 @@ let state = {
     isExporting: false,
     // Offset for pattern position adjustment (single X and Y values)
     offsetX: 0,  // positive = left, negative = right
-    offsetY: 0   // positive = up, negative = down
+    offsetY: 0,   // positive = up, negative = down
+    // Custom layout configuration
+    customConfig: {
+        pageWidth: 210,
+        pageHeight: 297,
+        marginTop: 5,
+        marginBottom: 5,
+        marginLeft: 4,
+        marginRight: 4,
+        gapH: 2,
+        gapV: 2,
+        cols: 10,
+        rows: 10
+    },
+    isCustomLayout: false
 };
 
 // Cropper state
@@ -677,19 +718,41 @@ function renderLayoutOptions() {
     const container = document.getElementById('layout-options');
     container.innerHTML = '';
 
-    Object.values(LAYOUTS).forEach(layout => {
+    const layouts = [...Object.values(LAYOUTS)];
+    // Add custom layout option
+    const customLayout = computeCustomLayout(state.customConfig);
+    layouts.push(customLayout);
+
+    const isCustom = state.isCustomLayout;
+    // Ensure custom panel visibility matches state
+    const customPanel = document.getElementById('custom-layout-panel');
+    if (customPanel) {
+        customPanel.classList.toggle('hidden', !isCustom);
+    }
+
+    layouts.forEach(layout => {
+        const isActive = layout.id === 'custom' ? isCustom : (!isCustom && state.currentLayout.id === layout.id);
         const option = document.createElement('div');
-        option.className = 'layout-option' + (state.currentLayout.id === layout.id ? ' active' : '');
+        option.className = 'layout-option' + (isActive ? ' active' : '');
         option.innerHTML = `
             <div class="layout-option-header">
                 <span class="layout-option-title">${layout.label}</span>
-                ${state.currentLayout.id === layout.id ? '<div class="layout-option-badge"></div>' : ''}
+                ${isActive ? '<div class="layout-option-badge"></div>' : ''}
             </div>
             <p class="layout-option-desc">${layout.description}</p>
         `;
         option.addEventListener('click', () => {
-            state.currentLayout = layout;
+            if (layout.id === 'custom') {
+                state.isCustomLayout = true;
+                state.currentLayout = customLayout;
+                document.getElementById('custom-layout-panel').classList.remove('hidden');
+            } else {
+                state.isCustomLayout = false;
+                state.currentLayout = layout;
+                document.getElementById('custom-layout-panel').classList.add('hidden');
+            }
             renderLayoutOptions();
+            updateSheetSize();
             renderGrid();
             renderThumbnails();
         });
@@ -762,7 +825,7 @@ function renderThumbnails() {
         const item = document.createElement('div');
         item.className = 'thumbnail-item';
         item.innerHTML = `
-            <div class="thumbnail-inner${idx === state.currentPageIndex ? ' active' : ''}">
+            <div class="thumbnail-inner${idx === state.currentPageIndex ? ' active' : ''}" style="aspect-ratio: ${getPageWidth()} / ${getPageHeight()}">
                 <div class="thumbnail-content">
                     ${renderThumbnailCells(page, imageMap)}
                 </div>
@@ -800,6 +863,14 @@ function renderThumbnailCells(page, imageMap) {
     return html;
 }
 
+function updateSheetSize() {
+    const sheet = document.getElementById('a4-sheet');
+    const w = getPageWidth();
+    const h = getPageHeight();
+    sheet.style.width = `${w}mm`;
+    sheet.style.height = `${h}mm`;
+}
+
 function updateScale() {
     const sheet = document.getElementById('a4-sheet');
     sheet.style.transform = `scale(${state.scale})`;
@@ -821,6 +892,7 @@ function renderAll() {
     updateCropper();
     renderProcessedGrid();
     updateColorInputs();
+    updateSheetSize();
     renderLayoutOptions();
     renderGrid();
     renderThumbnails();
@@ -1079,7 +1151,9 @@ function initScaleControls() {
 function exportToPdf() {
     if (!window.jspdf) { alert("PDF 组件未加载。"); return; }
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = getPageWidth();
+    const pageH = getPageHeight();
+    const doc = new jsPDF({ orientation: pageH >= pageW ? 'portrait' : 'landscape', unit: 'mm', format: [pageW, pageH] });
     const imageMap = new Map(state.processedImages.map(img => [img.id, img.url]));
     const radius = state.currentLayout.diameter / 2;
     const bgRadius = state.currentLayout.bgDiameter / 2;
@@ -1112,7 +1186,9 @@ function generateSvgString(page) {
     const imageMap = new Map(state.processedImages.map(img => [img.id, img.url]));
     const radius = state.currentLayout.diameter / 2;
     const bgRadius = state.currentLayout.bgDiameter / 2;
-    let svg = `<svg width="${A4_WIDTH_MM}mm" height="${A4_HEIGHT_MM}mm" viewBox="0 0 ${A4_WIDTH_MM} ${A4_HEIGHT_MM}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`;
+    const pageW = getPageWidth();
+    const pageH = getPageHeight();
+    let svg = `<svg width="${pageW}mm" height="${pageH}mm" viewBox="0 0 ${pageW} ${pageH}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`;
     svg += `<rect width="100%" height="100%" fill="white"/>`;
 
     for (let r = 0; r < state.currentLayout.rows; r++) {
@@ -1141,8 +1217,10 @@ async function drawPageToCanvas(page) {
     const canvas = document.createElement('canvas');
     const dpi = 300;
     const mmToPx = (mm) => (mm / 25.4) * dpi;
-    canvas.width = mmToPx(A4_WIDTH_MM);
-    canvas.height = mmToPx(A4_HEIGHT_MM);
+    const pageW = getPageWidth();
+    const pageH = getPageHeight();
+    canvas.width = mmToPx(pageW);
+    canvas.height = mmToPx(pageH);
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1286,6 +1364,43 @@ function initHelpModal() {
     });
 }
 
+// === CUSTOM LAYOUT PANEL ===
+function initCustomLayoutPanel() {
+    const ids = [
+        'custom-page-width', 'custom-page-height',
+        'custom-margin-top', 'custom-margin-bottom',
+        'custom-margin-left', 'custom-margin-right',
+        'custom-gap-h', 'custom-gap-v',
+        'custom-cols', 'custom-rows'
+    ];
+
+    const updateFromInputs = () => {
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+        state.customConfig = {
+            pageWidth: getVal('custom-page-width'),
+            pageHeight: getVal('custom-page-height'),
+            marginTop: getVal('custom-margin-top'),
+            marginBottom: getVal('custom-margin-bottom'),
+            marginLeft: getVal('custom-margin-left'),
+            marginRight: getVal('custom-margin-right'),
+            gapH: getVal('custom-gap-h'),
+            gapV: getVal('custom-gap-v'),
+            cols: Math.max(1, Math.round(getVal('custom-cols'))),
+            rows: Math.max(1, Math.round(getVal('custom-rows')))
+        };
+        state.currentLayout = computeCustomLayout(state.customConfig);
+        document.getElementById('custom-diameter').textContent = state.currentLayout.diameter.toFixed(1);
+        updateSheetSize();
+        renderLayoutOptions();
+        renderGrid();
+        renderThumbnails();
+    };
+
+    ids.forEach(id => {
+        document.getElementById(id).addEventListener('input', updateFromInputs);
+    });
+}
+
 // === INITIALIZATION ===
 function init() {
     // File upload
@@ -1322,6 +1437,7 @@ function init() {
     initExportMenu();
     initHelpModal();
     initOffsetControl();
+    initCustomLayoutPanel();
 
     // Initial render
     renderAll();
