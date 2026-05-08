@@ -55,23 +55,22 @@ const LAYOUTS = {
 function computeCustomLayout(config) {
     const availW = config.pageWidth - config.marginLeft - config.marginRight;
     const availH = config.pageHeight - config.marginTop - config.marginBottom;
-    const diamFromW = config.cols > 0 ? (availW - (config.cols - 1) * config.gapH) / config.cols : 0;
-    const diamFromH = config.rows > 0 ? (availH - (config.rows - 1) * config.gapV) / config.rows : 0;
-    const diameter = Math.max(1, Math.min(diamFromW, diamFromH));
+    const gapH = config.cols > 1 ? (availW - config.cols * config.diameter) / (config.cols - 1) : 0;
+    const gapV = config.rows > 1 ? (availH - config.rows * config.diameter) / (config.rows - 1) : 0;
     return {
         id: 'custom',
         label: '样式四 (自定义)',
         cols: config.cols,
         rows: config.rows,
-        diameter: diameter,
-        bgDiameter: diameter + 1,
-        gapH: config.gapH,
-        gapV: config.gapV,
+        diameter: config.diameter,
+        bgDiameter: config.diameter + 1,
+        gapH: gapH,
+        gapV: gapV,
         marginLeft: config.marginLeft,
         marginTop: config.marginTop,
         pageWidth: config.pageWidth,
         pageHeight: config.pageHeight,
-        description: `${config.rows}行 × ${config.cols}列，直径${diameter.toFixed(1)}mm`
+        description: `${config.rows}行 × ${config.cols}列，直径${config.diameter}mm`
     };
 }
 
@@ -111,8 +110,7 @@ let state = {
         marginBottom: 5,
         marginLeft: 4,
         marginRight: 4,
-        gapH: 2,
-        gapV: 2,
+        diameter: 10,
         cols: 10,
         rows: 10
     },
@@ -1370,7 +1368,7 @@ function initCustomLayoutPanel() {
         'custom-page-width', 'custom-page-height',
         'custom-margin-top', 'custom-margin-bottom',
         'custom-margin-left', 'custom-margin-right',
-        'custom-gap-h', 'custom-gap-v',
+        'custom-diameter',
         'custom-cols', 'custom-rows'
     ];
 
@@ -1383,13 +1381,13 @@ function initCustomLayoutPanel() {
             marginBottom: getVal('custom-margin-bottom'),
             marginLeft: getVal('custom-margin-left'),
             marginRight: getVal('custom-margin-right'),
-            gapH: getVal('custom-gap-h'),
-            gapV: getVal('custom-gap-v'),
+            diameter: Math.max(0.5, getVal('custom-diameter')),
             cols: Math.max(1, Math.round(getVal('custom-cols'))),
             rows: Math.max(1, Math.round(getVal('custom-rows')))
         };
         state.currentLayout = computeCustomLayout(state.customConfig);
-        document.getElementById('custom-diameter').textContent = state.currentLayout.diameter.toFixed(1);
+        document.getElementById('custom-gap-h-display').textContent = state.currentLayout.gapH.toFixed(1);
+        document.getElementById('custom-gap-v-display').textContent = state.currentLayout.gapV.toFixed(1);
         updateSheetSize();
         renderLayoutOptions();
         renderGrid();

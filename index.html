@@ -125,10 +125,9 @@
                             </div>
                         </div>
                         <div class="custom-layout-section">
-                            <span class="custom-section-title">圆点间距 (mm)</span>
+                            <span class="custom-section-title">圆点设置</span>
                             <div class="custom-layout-row">
-                                <label class="custom-label">横向 <input type="number" id="custom-gap-h" value="2" min="0" max="50" step="0.5"></label>
-                                <label class="custom-label">纵向 <input type="number" id="custom-gap-v" value="2" min="0" max="50" step="0.5"></label>
+                                <label class="custom-label">直径 (mm) <input type="number" id="custom-diameter" value="10" min="0.5" max="500" step="0.1"></label>
                             </div>
                         </div>
                         <div class="custom-layout-section">
@@ -139,7 +138,7 @@
                             </div>
                         </div>
                         <div class="custom-layout-result">
-                            计算圆点直径: <span id="custom-diameter">--</span> mm
+                            自动计算间距: 横向 <span id="custom-gap-h-display">--</span> mm，纵向 <span id="custom-gap-v-display">--</span> mm
                         </div>
                     </div>
                     <div class="layout-warning">
