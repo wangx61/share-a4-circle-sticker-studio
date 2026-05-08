@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A4 圆形贴纸排版工具</title>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- JSZip & FileSaver for other exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="title">A4 圆形排版</h1>
+                <p class="subtitle">极简现代主义风格</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="image">图片操作</button>
+                <button class="tab-btn" data-tab="background">背景色操作</button>
+                <button class="tab-btn" data-tab="page">页面操作</button>
+            </div>
+
+            <!-- Image Tab Content -->
+            <div id="tab-image" class="tab-content active">
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-title">1. 待处理区 (上传)</span>
+                        <span id="upload-count" class="section-count">0/100</span>
+                    </div>
+                    <label class="upload-area">
+                        <div class="upload-text">点击上传 (最多100张)</div>
+                        <input type="file" id="file-input" multiple accept="image/*" hidden>
+                    </label>
+                    <div id="uploaded-grid" class="image-grid"></div>
+                </div>
+
+                <div class="section">
+                    <span class="section-title">2. 图片处理</span>
+                    <div id="cropper-container" class="cropper-container">
+                        <div id="cropper-circle" class="cropper-circle">
+                            <canvas id="cropper-canvas" width="300" height="300"></canvas>
+                        </div>
+                        <div class="scale-control">
+                            <span>缩放:</span>
+                            <input type="range" id="crop-scale" min="0.01" max="10" step="0.01" value="1">
+                            <span id="scale-value">1.00x</span>
+                        </div>
+                        <button id="crop-confirm" class="btn-primary">确认裁剪</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <span class="section-title">3. 待选用区</span>
+                    <div id="processed-grid" class="processed-grid"></div>
+                </div>
+            </div>
+
+            <!-- Background Tab Content -->
+            <div id="tab-background" class="tab-content">
+                <div class="section">
+                    <span class="section-title">背景色板 (含1mm出血)</span>
+                    <div id="color-picker" class="color-picker">
+                        <div class="color-header">
+                            <span class="color-label">CMYK 颜色数值</span>
+                            <div class="color-actions">
+                                <button id="eye-dropper" class="eye-dropper-btn" title="吸取屏幕颜色">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 3.75a2.25 2.25 0 00-3.182 0l-9.354 9.354a2.25 2.25 0 00-.573 1.09l-.75 3.75a.75.75 0 00.88.88l3.75-.75a2.25 2.25 0 001.09-.573l9.354-9.354a2.25 2.25 0 000-3.182zM15.75 6.75l1.5 1.5M6.75 15.75l.75-3.75 3 3-3.75.75z"/></svg>
+                                </button>
+                                <div id="color-preview" class="color-preview"></div>
+                            </div>
+                        </div>
+                        <div class="channel-row" data-channel="c">
+                            <span class="channel-label">C</span>
+                            <input type="range" class="channel-slider" id="c-slider" min="0" max="100" value="0">
+                            <input type="number" class="channel-input" id="c-input" min="0" max="100" value="0">
+                        </div>
+                        <div class="channel-row" data-channel="m">
+                            <span class="channel-label">M</span>
+                            <input type="range" class="channel-slider" id="m-slider" min="0" max="100" value="0">
+                            <input type="number" class="channel-input" id="m-input" min="0" max="100" value="0">
+                        </div>
+                        <div class="channel-row" data-channel="y">
+                            <span class="channel-label">Y</span>
+                            <input type="range" class="channel-slider" id="y-slider" min="0" max="100" value="0">
+                            <input type="number" class="channel-input" id="y-input" min="0" max="100" value="0">
+                        </div>
+                        <div class="channel-row" data-channel="k">
+                            <span class="channel-label">K</span>
+                            <input type="range" class="channel-slider" id="k-slider" min="0" max="100" value="0">
+                            <input type="number" class="channel-input" id="k-input" min="0" max="100" value="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Tab Content -->
+            <div id="tab-page" class="tab-content">
+                <div class="section">
+                    <span class="section-title">选择页面样式</span>
+                    <div id="layout-options" class="layout-options"></div>
+                    <div class="layout-warning">
+                        注意：切换页面样式不会删除已有内容，但超出新网格范围的内容将暂时不可见，切回原样式后可恢复。
+                    </div>
+                </div>
+
+                <div class="section offset-section">
+                    <div class="section-header">
+                        <span class="section-title">图案整体微调</span>
+                        <button id="offset-toggle" class="offset-toggle-btn">展开设置</button>
+                    </div>
+                    <div id="offset-panel" class="offset-panel hidden">
+                        <div class="offset-description">
+                            调整整个图案网格在页面上的位置偏移，精度为0.1mm
+                        </div>
+                        <div class="offset-preview-container">
+                            <div class="offset-preview-box">
+                                <div id="offset-grid-indicator" class="offset-grid-indicator"></div>
+                                <button class="offset-arrow offset-arrow-up" id="arrow-up">↑</button>
+                                <button class="offset-arrow offset-arrow-down" id="arrow-down">↓</button>
+                                <button class="offset-arrow offset-arrow-left" id="arrow-left">←</button>
+                                <button class="offset-arrow offset-arrow-right" id="arrow-right">→</button>
+                            </div>
+                        </div>
+                        <div class="offset-values">
+                            <div class="offset-value-row">
+                                <span class="offset-value-label">水平偏移 (左移为正):</span>
+                                <div class="offset-value-input-group">
+                                    <button class="offset-value-btn" id="offset-x-decrease">−</button>
+                                    <input type="number" id="offset-x" class="offset-value-input" value="0" min="-50" max="50" step="0.1">
+                                    <button class="offset-value-btn" id="offset-x-increase">+</button>
+                                </div>
+                                <span class="offset-value-unit">mm</span>
+                            </div>
+                            <div class="offset-value-row">
+                                <span class="offset-value-label">垂直偏移 (上移为正):</span>
+                                <div class="offset-value-input-group">
+                                    <button class="offset-value-btn" id="offset-y-decrease">−</button>
+                                    <input type="number" id="offset-y" class="offset-value-input" value="0" min="-50" max="50" step="0.1">
+                                    <button class="offset-value-btn" id="offset-y-increase">+</button>
+                                </div>
+                                <span class="offset-value-unit">mm</span>
+                            </div>
+                        </div>
+                        <button id="offset-reset" class="offset-reset-btn">重置偏移 (0, 0)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box Select -->
+            <div class="section box-select-section">
+                <span class="section-title">框选功能</span>
+                <div class="box-select-buttons">
+                    <button id="box-fill" class="box-btn">框选填充</button>
+                    <button id="box-delete" class="box-btn box-btn-danger">框选删除</button>
+                    <button id="box-off" class="box-btn box-btn-dark active">关闭框选</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button id="undo-btn" class="toolbar-btn" title="撤销">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                    </button>
+                    <button id="redo-btn" class="toolbar-btn" title="重做">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <span id="fill-label" class="toolbar-label">填充图片:</span>
+                    <div class="toolbar-buttons">
+                        <button id="fill-one" class="toolbar-action-btn">填一个</button>
+                        <button id="fill-row" class="toolbar-action-btn">填一行</button>
+                        <button id="fill-page" class="toolbar-action-btn">填满整页</button>
+                    </div>
+                    <span class="toolbar-label toolbar-label-left">删除操作:</span>
+                    <div class="toolbar-buttons">
+                        <button id="delete-one" class="toolbar-action-btn toolbar-action-btn-danger">删一个</button>
+                        <button id="delete-row" class="toolbar-action-btn toolbar-action-btn-danger">删一行</button>
+                        <button id="delete-page" class="toolbar-action-btn toolbar-action-btn-danger">删除整页</button>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <span id="page-info" class="page-info">第 1 页 / 共 1 页</span>
+                    <div class="export-dropdown">
+                        <button id="export-btn" class="export-btn">导出
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="export-menu" class="export-menu hidden">
+                            <button data-format="pdf">PDF 格式</button>
+                            <button data-format="svg">SVG 格式</button>
+                            <button data-format="png">PNG 格式</button>
+                            <button data-format="jpg">JPG 格式</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div id="canvas-container" class="canvas-container">
+                <div id="a4-sheet" class="a4-sheet">
+                    <div id="grid-container" class="grid-container"></div>
+                    <div id="selection-box" class="selection-box hidden"></div>
+                </div>
+                <div class="scale-controls">
+                    <button id="scale-down" class="scale-btn">-</button>
+                    <input type="number" id="scale-input" class="scale-input" value="100" min="20" max="300">
+                    <span class="scale-unit">%</span>
+                    <button id="scale-up" class="scale-btn">+</button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <button id="help-btn" class="help-btn">了解详情</button>
+            </div>
+        </div>
+
+        <!-- Thumbnail Strip -->
+        <div id="thumbnail-strip" class="thumbnail-strip">
+            <div class="thumbnail-header">
+                <span class="thumbnail-title">页面概览 (1)</span>
+                <button id="add-page-btn" class="add-page-btn">+</button>
+            </div>
+            <div id="thumbnail-list" class="thumbnail-list"></div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="close-modal" class="modal-close">X</button>
+            <h2 class="modal-title">了解详情</h2>
+            <div class="modal-body">
+                <p><strong>1. 图片与处理：</strong>最多上传100张图片。选中图片进行圆形裁剪。</p>
+                <p><strong>2. 填充规则：</strong>选择图片或背景颜色。点击圆形区域进行填充，或使用顶部的"填一个/填一行/填满整页"按钮。</p>
+                <p><strong>3. 框选功能：</strong>开启框选填充或删除模式后，在画布上拖拽即可批量操作。</p>
+                <p><strong>4. 页面样式：</strong>在"页面操作"标签中切换不同的网格布局（样式一 10mm / 样式二 16mm / 样式三 20mm）。</p>
+                <p><strong>5. 导出：</strong>点击"导出"按钮，可选择 PDF、SVG、PNG 或 JPG 格式保存当前所有非空页面。</p>
+                <p><strong>6. 缩放画布：</strong>右下角控制条可输入百分比或点击加减号缩放画布。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
